@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en-us" dir="ltr">
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
+  <meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
+<title>Chapter 1. Red Hat JBoss Web Server Operator | Hugo Portfolio Test</title>
+
+    <link rel="stylesheet" href="/css/main.css">
+
+
+      <script src="/js/main.js"></script>
+
+
+</head>
+<body>
+  <header>
+    <h1>Hugo Portfolio Test</h1>
+
+  <nav>
+    <ul>
+    <li>
+      <a href="/">Home</a>
+    </li>
+    <li>
+      <a aria-current="true" class="ancestor" href="/documents/">Documents</a>
+    </li>
+    </ul>
+  </nav>
+
+
+  </header>
+  <main>
+    
+  <h1>Chapter 1. Red Hat JBoss Web Server Operator</h1>
+
+  
+  
+  <time datetime="2024-07-25T00:00:00&#43;00:00">July 25, 2024</time>
+
+  <p>An Operator is a Kubernetes-native application that makes it easy to
+manage complex stateful applications in Kubernetes and OpenShift
+environments. Red Hat JBoss Web Server (JWS) provides an Operator to
+manage JWS for OpenShift images. You can use the JWS Operator to create,
+configure, manage, and seamlessly upgrade instances of web server
+applications in OpenShift.</p>
+<p>Operators include the following key concepts:</p>
+<ul>
+<li>
+<p>The <em>Operator Framework</em> is a toolkit to manage Operators in an effective, automated, and scalable way. The Operator Framework consists of three main components:</p>
+<ul>
+<li>You can use <em>OperatorHub</em> to discover Operators that you want to install.</li>
+<li>You can use the <em>Operator Lifecycle Manager</em> (OLM) to install and manage Operators in your OpenShift cluster.</li>
+<li>You can use the <em>Operator SDK</em> if you want to develop your own custom Operators.</li>
+</ul>
+</li>
+<li>
+<p>An <em>Operator group</em> is an OLM resource that provides multitenant configuration to OLM-installed Operators. An Operator group selects target namespaces in which to generate role-based access control (RBAC) for all Operators that are deployed in the same namespace as the <code>OperatorGroup</code> object.</p>
+</li>
+<li>
+<p><em>Custom resource definitions</em> (CRDs) are a Kubernetes extension mechanism that Operators use. CRDs allow the custom objects that an Operator manages to behave like native Kubernetes objects. The JWS Operator provides a set of CRD parameters that you can specify in custom resource files for web server applications that you want to deploy.</p>
+</li>
+</ul>
+<p>This document describes how to install the JWS Operator, deploy an
+existing JWS image, and delete Operators from a cluster. This document
+also provides details of the CRD parameters that the JWS Operator
+provides.</p>
+<p><strong>Note:</strong>
+Before you follow the instructions in this guide, you must ensure that
+an OpenShift cluster is already installed and configured as a
+prerequisite. For more information about installing and configuring
+OpenShift clusters, see the OpenShift Container Platform
+<a href="https://access.redhat.com/documentation/en-us/openshift_container_platform/4.9/html-single/installing/index">Installing</a> guide.</p>
+<p>For a faster but less detailed guide to deploying a prepared image or
+building an image from an existing image stream, see the JWS Operator
+<a href="https://github.com/web-servers/jws-operator/blob/2.0.x/QuickStart.md">QuickStart</a> guide.</p>
+<p><strong>Important</strong>
+Red Hat supports images for JWS 5.4 or later versions only.</p>
+<p><strong>Additional resources</strong></p>
+<ul>
+<li><a href="https://access.redhat.com/documentation/en-us/openshift_container_platform/4.9/html-single/operatorsindex#understanding-operators">Understanding Operators</a></li>
+<li><a href="https://access.redhat.com/documentation/en-us/openshift_container_platform/4.9/html-single/installing/index">Installing and configuring OpenShift Container Platform clusters</a></li>
+</ul>
+<h1 id="chapter2what-is-new-in-the-jws-operator-20-release">Chapter 2. What is new in the JWS Operator 2.0 release?</h1>
+<p>The JWS Operator 2.0 release provides level-2 Operator capabilities such
+as seamless integration. JWS Operator 2.0 also supports Red Hat JBoss
+Web Server metering labels and includes some enhanced Custom Resource
+Definition (CRD) parameters.</p>
+<h3 id="level-2-operator-capabilities">Level-2 Operator capabilities</h3>
+<p>JWS Operator 2.0 provides the following level-2 Operator capability
+features:</p>
+<ul>
+<li>Enables seamless upgrades</li>
+<li>Supports patch and minor version upgrades</li>
+<li>Manages web servers deployed by the JWS Operator 1.1.x.</li>
+</ul>
+<h3 id="enabling-level-2-seamless-integration-for-new-images">Enabling level-2 seamless integration for new images</h3>
+<p>The <code>DeploymentConfig</code> object definition includes a trigger
+that OpenShift uses to deploy new pods when a new image is pushed to the
+image stream. The image stream can monitor the repository for new images
+or you can instruct the image stream that a new image is available for
+use.</p>
+<p><strong>Procedure</strong></p>
+<ol>
+<li>
+<p>In your project namespace, create an image stream by using the
+<code>oc import-image</code> command to import the tag and other
+information for an image.</p>
+<p>For example:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">oc import-image &lt;my-image&gt;-imagestream:latest \
+--from=quay.io/$user/&lt;my-image&gt;:latest \
+--confirm
+</code></pre><p>In the preceding example, replace each occurrence of
+<code>&lt;my-image&gt;</code> with the name of the image that you want to
+import.</p>
+<p>The preceding command creates an image stream named
+<code>&lt;my-image&gt;-imagestream</code> by importing information for the
+<code>quay.io/$user/&lt;my-image&gt;</code> image. For more information
+about the format and management of image streams, see <a href="https://docs.openshift.com/container-platform/4.10/openshift_images/image-streams-manage.html">Managing
+image
+streams</a>.</p>
+</li>
+<li>
+<p>Create a custom resource of the <code>WebServer</code> kind for the
+web application that you want the JWS Operator to deploy whenever
+the image stream is updated. You can define the custom resource in
+YAML file format.</p>
+<p>For example:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">apiVersion: web.servers.org/v1alpha1
+kind: WebServer
+metadata:
+  name: &lt;my-image&gt;
+spec:
+  # Add fields here
+  applicationName: my-app
+  useSessionClustering: true
+  replicas: 2
+  webImageStream:
+    imageStreamNamespace: &lt;project-name&gt;
+    imageStreamName: &lt;my-image&gt;-imagestream
+</code></pre></li>
+<li>
+<p>Trigger an update to the image stream by using the
+<code>oc tag</code> command.</p>
+<p>For example:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">oc tag quay.io/$user/&lt;my-image&gt; &lt;my-image&gt;-imagestream:latest --scheduled
+</code></pre><p>The preceding command causes OpenShift Container Platform to update
+the specified image stream tag periodically. This period is a
+cluster-wide setting that is set to 15 minutes by default.</p>
+</li>
+</ol>
+<h3 id="level-2-seamless-integration-for-rebuilding-existing-images">Level-2 seamless integration for rebuilding existing images</h3>
+<p>The <code>BuildConfig</code> object definition includes a trigger for
+image stream updates and a webhook, which is either a GitHub or Generic
+webhook, that enables the rebuilding of images when the webhook is
+triggered by Git or GitHub.</p>
+<p>For more information about creating a secret for a webhook, see
+<a href="#create_webhook_secret" title="Chapter 6. Creating a secret for a generic or GitHub webhook">Creating a secret for a generic or GitHub
+webhook</a>.</p>
+<p>For more information about configuring a generic or GitHub webhook in a
+custom resource WebServer file, see <a href="#crd_parameters" title="Chapter 7. JWS Operator CRD parameters">JWS Operator CRD
+parameters</a>.</p>
+<h3 id="support-for-red-hat-jboss-web-server-metering-labels">Support for Red Hat JBoss Web Server metering labels</h3>
+<p>JWS Operator 2.0 supports the ability to add metering labels to the Red
+Hat JBoss Web Server pods that the JWS Operator creates.</p>
+<p>Red Hat JBoss Web Server can use the following metering labels:</p>
+<ul>
+<li><code>com.company: Red_Hat</code></li>
+<li><code>rht.prod_name: Red_Hat_Runtimes</code></li>
+<li><code>rht.prod_ver: 2022-Q4</code></li>
+<li><code>rht.comp: JBoss_Web_Server</code></li>
+<li><code>rht.comp_ver: 5.7.0</code></li>
+<li><code>rht.subcomp: Tomcat 9</code></li>
+<li><code>rht.subcomp_t: application</code></li>
+</ul>
+<p>You can add labels under the <code>metadata</code> section in the custom
+resource <code>WebServer</code> file for a web application that you want
+to deploy. For example:</p>
+<pre tabindex="0"><code>---
+apiVersion: web.servers.org/v1alpha1
+kind: WebServer
+metadata:
+  name: &lt;my-image&gt;
+  labels:
+    com.company: Red_Hat
+    rht.prod_name: Red_Hat_Runtimes
+    rht.prod_ver: 2022-Q4
+    rht.comp: JBoss_Web_Server
+    rht.comp_ver: 5.7.0
+    rht.subcomp: Tomcat 9
+    rht.subcomp_t: application
+spec:
+----
+</code></pre><p><strong>Note:</strong>
+If you change any label key or label value for a deployed web server,
+the JWS Operator redeploys the web server application. If the deployed
+web server was built from source code, the JWS Operator also rebuilds
+the web server application.</p>
+<h3 id="enhanced-webimage-parameter">Enhanced <code>webImage</code> parameter</h3>
+<p>In the JWS Operator 2.0 release, the <code>webImage</code> parameter in
+the CRD contains the following additional fields:</p>
+<ul>
+<li>
+<p><code>imagePullSecret</code></p>
+<p>The secret that the JWS Operator uses to pull images from the
+repository</p>
+<p><strong>Note:</strong>
+The secret must contain the key <code>.dockerconfigjson</code>. The
+JWS Operator mounts and uses the secret (for example,
+<code>--authfile /mount_point/.dockerconfigjson</code>) to pull the
+images from the repository. The <code>Secret</code> object definition
+file might contain server username and password values or tokens to
+allow access to images in the image stream, the builder image, and
+images built by the JWS Operator.</p>
+</li>
+<li>
+<p><code>webApp</code></p>
+<p>A set of parameters that describe how the JWS Operator builds the
+web server application</p>
+</li>
+</ul>
+<h3 id="enhanced-webapp-parameter">Enhanced <code>webApp</code> parameter</h3>
+<p>In the JWS Operator 2.0 release, the <code>webApp</code> parameter in the
+CRD contains the following additional fields:</p>
+<ul>
+<li>
+<p><code>name</code></p>
+<p>The name of the web server application</p>
+</li>
+<li>
+<p><code>sourceRepositoryURL</code></p>
+<p>The URL where the application source files are located</p>
+</li>
+<li>
+<p><code>sourceRepositoryRef</code></p>
+<p>The branch of the source repository that the Operator uses</p>
+</li>
+<li>
+<p><code>sourceRepositoryContextDir</code></p>
+<p>The subdirectory where the <code>pom.xml</code> file is located and
+where the <code>mvn install</code> command must be run</p>
+</li>
+<li>
+<p><code>webAppWarImage</code></p>
+<p>The URL of the images where the JWS Operator pushes the built image</p>
+</li>
+<li>
+<p><code>webAppWarImagePushSecret</code></p>
+<p>The secret that the JWS Operator uses to push images to the
+repository</p>
+</li>
+<li>
+<p><code>builder</code></p>
+<p>A set of parameters that contain all the information required to
+build the web application and create and push the image to the image
+repository</p>
+<p><strong>Note:</strong>
+To ensure that the builder can operate successfully and run commands
+with different user IDs, the builder must have access to the
+<code>anyuid</code> security context constraint (SCC).</p>
+<p>To grant the builder access to the <code>anyuid</code>SCC, enter the
+following command:</p>
+<p><code>oc adm policy add-scc-to-user anyuid -z builder</code></p>
+<p>The <code>builder</code> parameter contains the following fields:</p>
+<ul>
+<li>
+<p><code>image</code></p>
+<p>The image of the container where the web application is built
+(for example, <code>quay.io/$user/tomcat10-buildah</code>)</p>
+</li>
+<li>
+<p><code>imagePullSecret</code></p>
+<p>The secret (if specified) that the JWS Operator uses to pull the
+builder image from the repository</p>
+</li>
+<li>
+<p><code>applicationBuildScript</code></p>
+<p>The script that the builder image uses to build the application
+<code>.war</code> file and move it to the <code>/mnt</code>
+directory</p>
+<p><strong>Note:</strong>
+If you do not specify a value for this parameter, the builder
+image uses a default script that uses Maven and Buildah.</p>
+</li>
+</ul>
+</li>
+</ul>
+<p><strong>Additional resources</strong></p>
+<ul>
+<li><a href="https://operatorframework.io/operator-capabilities/">Operator Capability Levels</a></li>
+</ul>
+<h1 id="chapter3jws-operator-installation-from-operatorhub">Chapter 3. JWS Operator installation from OperatorHub</h1>
+<p>You can install the JWS Operator from OperatorHub to facilitate the
+deployment and management of JBoss Web Server applications in an
+OpenShift cluster. OperatorHub is a component of the Operator Framework
+that you can use to discover Operators that you want to install.
+OperatorHub works in conjunction with the Operator Lifecycle Manger
+(OLM), which installs and manages Operators in a cluster.</p>
+<p>You can install the JWS Operator from OperatorHub in either of the
+following ways:</p>
+<ul>
+<li><a href="#operator_install_console" title="3.1. Installing the JWS Operator by using the web console">Use the OpenShift web
+console</a></li>
+<li><a href="#operator_install_tool" title="3.2. Installing the JWS Operator by using the command line">Use the <code>oc</code> command-line
+tool</a>.</li>
+</ul>
+<h2 id="31installing-the-jws-operator-by-using-the-web-console">3.1. Installing the JWS Operator by using the web console</h2>
+<p>If you want to install the JWS Operator by using a graphical user
+interface, you can use the OpenShift web console to install the JWS
+Operator.</p>
+<p><strong>Note:</strong>
+When you install the JWS Operator by using the web console, and the
+Operator is using <code>SingleNamespace</code>installation mode, the
+<code>OperatorGroup</code> and <code>Subscription</code> objects are
+installed automatically.</p>
+<p><strong>Prerequisites</strong></p>
+<ul>
+<li>You have deployed an OpenShift Container Platform cluster by using
+an account with cluster administrator and Operator installation
+permissions.</li>
+</ul>
+<p><strong>Procedure</strong></p>
+<ol>
+<li>
+<p>Open the web console and select <strong>Operators &gt;
+OperatorHub</strong>.</p>
+</li>
+<li>
+<p>In the <strong>Filter by keyword</strong> search field, type
+&quot;JWS&quot;.</p>
+</li>
+<li>
+<p>Select the JWS Operator.</p>
+</li>
+<li>
+<p>On the <strong>JBoss Web Server Operator</strong> menu, select
+the <strong>Capability level</strong> that you want to use and
+click <strong>Install</strong>.</p>
+</li>
+<li>
+<p>On the <strong>Install Operator</strong> page, perform the
+following steps:</p>
+<p>a.  Select the <strong>Update channel</strong> where the JWS
+Operator is available.</p>
+<pre><code>**Note:**
+The JWS Operator is currently available through one channel
+only.
+</code></pre>
+<p>b.  Select the <strong>Installation mode</strong> for the Operator.</p>
+<pre><code>You can install the Operator to all namespaces or to a specific
+namespace on the cluster. If you select the specific namespace
+option, use the **Installed Namespace** field
+to specify the namespace where you want to install the Operator.
+
+**Note:**
+If you do not specify a namespace, the Operator is installed to
+all namespaces on the cluster by default.
+</code></pre>
+<p>c.  Select the <strong>Approval strategy</strong> for the
+Operator.</p>
+<pre><code>Consider the following guidelines:
+
+-   If you select **Automatic** updates, when
+    a new version of the Operator is available, the OLM upgrades
+    the running instance of your Operator automatically.
+-   If you select **Manual** updates, when a
+    newer version of the Operator is available, the OLM creates
+    an update request. As a cluster administrator, you must then
+    manually approve the update request to ensure that the
+    Operator is updated to the new version.
+</code></pre>
+</li>
+<li>
+<p>Click <strong>Install</strong>.</p>
+<p><strong>Note:</strong>
+If you have selected a <strong>Manual</strong> approval strategy, you must approve the install plan before the installation is complete.</p>
+<p>The JWS Operator then appears in the <strong>Installed Operators</strong> section of the <strong>Operators</strong> tab.</p>
+</li>
+</ol>
+<h2 id="32installing-the-jws-operator-by-using-the-command-line">3.2. Installing the JWS Operator by using the command line</h2>
+<p>If you want to install the JWS Operator by using a command-line
+interface, you can use the <code>oc</code> command-line tool to install
+the JWS Operator.</p>
+<p>The steps to install the JWS Operator from the command line include
+verifying the supported installation modes and available channels for
+the Operator and creating a Subscription object. Depending on the
+installation mode that the Operator uses, you might also need to create
+an Operator group in the project namespace before you create the
+Subscription object.</p>
+<p><strong>Prerequisites</strong></p>
+<ul>
+<li>You have deployed an OpenShift Container Platform cluster by using
+an account with Operator installation permissions.</li>
+<li>You have installed the <code>oc</code> tool on your local system.</li>
+</ul>
+<p><strong>Procedure</strong></p>
+<ol>
+<li>
+<p>To inspect the JWS Operator, perform the following steps:</p>
+<p>a.  View the list of JWS Operators that are available to the cluster
+from OperatorHub:</p>
+<pre><code>``` screen
+$ oc get packagemanifests -n openshift-marketplace | grep jws
+```
+
+The preceding command displays the name, catalog, and age of
+each available Operator.
+
+For example:
+
+``` screen
+NAME            CATALOG             AGE
+jws-operator    Red Hat Operators   16h
+```
+</code></pre>
+<p>b.  Inspect the JWS Operator to verify the supported installation
+modes and available channels for the Operator:</p>
+<pre><code>``` screen
+$ oc describe packagemanifests jws-operator -n openshift-marketplace
+```
+</code></pre>
+</li>
+<li>
+<p>Check the actual list of Operator groups:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">$ oc get operatorgroups -n &lt;project_name&gt;
+</code></pre><p>In the preceding example, replace <code>&lt;project_name&gt;</code> with your OpenShift project name.</p>
+<p>The preceding command displays the name and age of each available
+Operator group.</p>
+<p>For example:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">NAME       AGE
+mygroup    17h
+</code></pre></li>
+<li>
+<p>If you need to create an Operator group, perform the following
+steps:</p>
+<p><strong>Note:</strong>
+If the Operator you want to install uses <code>SingleNamespace</code>
+installation mode and you do not already have an appropriate
+Operator group in place, you must complete this step to create an
+Operator group. You must ensure that you create only one Operator
+group in the specified namespace. If the Operator you want to install uses <code>AllNamespaces</code> installation mode or you already have an appropriate Operator group in place, you can ignore this step.</p>
+<p>a.  Create a YAML file for the <code>OperatorGroup</code> object.</p>
+<p>For example:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: &lt;operatorgroup_name&gt;
+  namespace: &lt;project_name&gt;
+spec:
+  targetNamespaces:
+  - &lt;project_name&gt;
+</code></pre><p>In the preceding example, replace <code>&lt;operatorgroup_name&gt;</code> with the name of the Operator group that you want to create, and replace <code>&lt;project_name&gt;</code> with the name of the project where you want to install the Operator. To view the project name, you can run the <code>oc project -q</code> command.</p>
+<p>b.  Create the <code>OperatorGroup</code> object from the YAML file:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">$ oc apply -f &lt;filename&gt;.yaml
+</code></pre><p>In the preceding example, replace <code>&lt;filename&gt;.yaml</code> with the name of the YAML file that you have created for the <code>OperatorGroup</code> object.</p>
+</li>
+<li>
+<p>To create a Subscription object, perform the following steps:</p>
+<p>a.  Create a YAML file for the <code>Subscription</code> object.</p>
+<p>For example:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+    name: jws-operator
+    namespace: &lt;project_name&gt;
+spec:
+    channel: alpha
+    name: jws-operator
+    source: redhat-operators
+    sourceNamespace: openshift-marketplace
+</code></pre><p>In the preceding example, replace <code>&lt;project_name&gt;</code> with the name of the project where you want to install the Operator. To view the project name, you can run the <code>oc project -q</code> command.</p>
+<p>The namespace that you specify must have an <code>OperatorGroup</code> object that has the same installation mode setting as the Operator. If the Operator uses <code>AllNamespaces</code> installation mode, replace <code>&lt;project_name&gt;</code> with <code>openshift-operators</code>, which already provides an appropriate Operator group. If the  Operator uses <code>SingleNamespace</code> installation mode, ensure that this namespace has only one <code>OperatorGroup</code> object.</p>
+<p>Ensure that the <code>source</code> setting matches the <code>Catalog Source</code> value that was displayed when you verified the available channels for the Operator (for example, <code>redhat-operators</code>).</p>
+<p>b.  Create the <code>Subscription</code> object from the YAML file:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">$ oc apply -f &lt;filename&gt;.yaml
+</code></pre><p>In the preceding example, replace <code>&lt;filename&gt;.yaml</code> with the name of the YAML file that you have created for the <code>Subscription</code> object.</p>
+</li>
+</ol>
+<p><strong>Verification</strong></p>
+<ul>
+<li>
+<p>To verify that the JWS Operator is installed successfully, enter the
+following command:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">$ oc get csv -n &lt;project_name&gt;
+</code></pre><p>In the preceding example, replace <code>&lt;project_name&gt;</code> with
+the name of the project where you have installed the Operator.</p>
+<p>The preceding command displays details of the installed Operator.</p>
+</li>
+</ul>
+<h1 id="chapter4deploying-an-existing-jws-image">Chapter 4. Deploying an existing JWS image</h1>
+<p>You can use the JWS Operator to facilitate the deployment of an existing image for a web server application that you want to deploy in an OpenShift cluster. In this situation, you must create a custom resource <code>WebServer</code> file for the web server application that you want to deploy. The JWS Operator uses the custom resource <code>WebServer</code> file to handle the application deployment.</p>
+<p><strong>Prerequisites</strong></p>
+<ul>
+<li>
+<p>You have <a href="#operator_install" title="Chapter 3. JWS Operator installation from OperatorHub">installed the JWS Operator from
+OperatorHub</a>.</p>
+<p>To ensure that the JWS Operator is installed, enter the following
+command:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">$ oc get deployment.apps/jws-operator
+</code></pre><p>The preceding command displays the name and status details of the
+Operator.</p>
+<p>For example:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">NAME            READY   UP-TO-DATE   AVAILABLE   AGE
+jws-operator    1/1     1            1           15h
+</code></pre><p><strong>Note:</strong>
+If you want to view more detailed output, you can use the following
+command:</p>
+<p><code>oc describe deployment.apps/jws-operator</code></p>
+</li>
+</ul>
+<p><strong>Procedure</strong></p>
+<ol>
+<li>
+<p>Prepare your image and push it to the location where you want to
+display the image (for example, <code>quay.io/&lt;USERNAME&gt;/tomcat-demo:latest</code>).</p>
+</li>
+<li>
+<p>To create a custom resource file for your web server application,
+perform the following steps:</p>
+<p>a.  Create a YAML file named, for example,
+<code>webservers_cr.yaml</code>.</p>
+<p>b.  Enter details in the following format:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">apiVersion: web.servers.org/v1alpha1
+kind: WebServer
+metadata:
+    name: &lt;image name&gt;
+spec:
+    # Add fields here
+    applicationName: &lt;application name&gt;
+    replicas: 2
+webImage:
+   applicationImage: &lt;URL of the image&gt;
+</code></pre><p>For example:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">apiVersion: web.servers.org/v1alpha1
+kind: WebServer
+metadata:
+    name: example-image-webserver
+spec:
+    # Add fields here
+    applicationName: jws-app
+    replicas: 2
+webImage:
+   applicationImage: quay.io/&lt;USERNAME&gt;/tomcat-demo:latest
+</code></pre></li>
+<li>
+<p>To deploy your web application, perform the following steps:</p>
+<p>a.  Go to the directory where you have created the web application.</p>
+<p>b.  Enter the following command:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">$ oc apply -f webservers_cr.yaml
+</code></pre><p>The preceding command displays a message to confirm that the web application is deployed.</p>
+<p>For example:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">webserver/example-image-webserver created
+</code></pre><p>When you run the preceding command, the Operator also creates a route automatically.</p>
+</li>
+<li>
+<p>Verify the route that the Operator has automatically created:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">$ oc get routes
+</code></pre></li>
+<li>
+<p>Optional: Delete the <code>webserver</code> that you created in step 3 of this procedure:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">$ oc delete webserver example-image-webserver
+</code></pre><p><strong>Note:</strong>
+Alternatively, you can delete the <code>webserver</code> by deleting the YAML file. For example:</p>
+<p><code>oc delete -f webservers_cr.yaml</code></p>
+</li>
+</ol>
+<p><strong>Additional resources</strong></p>
+<ul>
+<li><a href="https://docs.openshift.com/container-platform/4.7/networking/routes/route-configuration.html">Route configuration: Creating an HTTP-based
+route</a></li>
+</ul>
+<h1 id="chapter5jws-operator-deletion-from-a-cluster">Chapter 5. JWS Operator deletion from a cluster</h1>
+<p>If you no longer need to use the JWS Operator, you can subsequently
+delete the JWS Operator from a cluster.</p>
+<p>You can delete the JWS Operator from a cluster in either of the
+following ways:</p>
+<ul>
+<li><a href="#operator_delete_console" title="5.1. Deleting the JWS Operator by using the web console">Use the OpenShift web
+console</a>.</li>
+<li><a href="#operator_delete_tool" title="5.2. Deleting the JWS Operator by using the command line">Use the <code>oc</code> command-line
+tool</a>.</li>
+</ul>
+<h2 id="51deleting-the-jws-operator-by-using-the-web-console">5.1. Deleting the JWS Operator by using the web console</h2>
+<p>If you want to delete the JWS Operator by using a graphical user
+interface, you can use the OpenShift web console to delete the JWS
+Operator.</p>
+<p><strong>Prerequisites</strong></p>
+<ul>
+<li>
+<p>You have deployed an OpenShift Container Platform cluster by using
+an account with <code>cluster admin</code> permissions.</p>
+<p><strong>Note:</strong>
+If you do not have <code>cluster admin</code> permissions, you can circumvent this requirement. For more information, see <a href="https://access.redhat.com/documentation/en-us/openshift_container_platform/4.5/html/operators/administrator-tasks#olm-creating-policy">Allowing non-cluster administrators to install Operators</a>.</p>
+</li>
+</ul>
+<p><strong>Procedure</strong></p>
+<ol>
+<li>
+<p>Open the web console and click [<strong>Operators &gt; Installed
+Operators</strong>].</p>
+</li>
+<li>
+<p>Select the [<strong>Actions</strong>] menu and click <strong>Uninstall Operator</strong>.</p>
+<p><strong>Note:</strong>
+The [<strong>Uninstall Operator</strong>] option automatically removes the Operator, any Operator deployments, and Pods. Deleting the Operator does not remove any custom resource definitions or custom resources for the Operator, including CRDs or CRs. If the Operator has deployed applications on the cluster, or if the Operator has configured resources outside the cluster, you must clean up these applications and resources manually.</p>
+</li>
+</ol>
+<h2 id="52deleting-the-jws-operator-by-using-the-command-line">5.2. Deleting the JWS Operator by using the command line</h2>
+<p>If you want to delete the JWS Operator by using a command-line interface, you can use the <code>oc</code> command-line tool to delete the JWS Operator.</p>
+<p><strong>Prerequisites</strong></p>
+<ul>
+<li>
+<p>You have deployed an OpenShift Container Platform cluster by using
+an account with <code>cluster admin</code> permissions.</p>
+<p><strong>Note:</strong>
+If you do not have <code>cluster admin</code> permissions, you can circumvent this requirement. For more information, see <a href="https://access.redhat.com/documentation/en-us/openshift_container_platform/4.5/html/operators/administrator-tasks#olm-creating-policy">Allowing non-cluster administrators to install Operators</a>.</p>
+</li>
+<li>
+<p>You have installed the <code>oc</code> tool on your local system.</p>
+</li>
+</ul>
+<p><strong>Procedure</strong></p>
+<ol>
+<li>
+<p>Check the current version of the subscribed Operator:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">$ oc get subscription jws-operator -n &lt;project_name&gt; -o yaml | grep currentCSV
+</code></pre><p>In the preceding example, replace <code>&lt;project_name&gt;</code> with
+the namespace of the project where you installed the Operator. If
+your Operator was installed to all namespaces, replace
+<code>&lt;project_name&gt;</code> with <code>openshift-operators</code>.</p>
+<p>The preceding command displays the following output, where
+<code>v2.0.x</code> refers to the Operator version (for example,
+<code>v2.0.0</code>):</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">f:currentCSV: {}
+currentCSV: jws-operator.v2.0.x
+</code></pre></li>
+<li>
+<p>Delete the subscription for the Operator:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">$ oc delete subscription jws-operator -n &lt;project_name&gt;
+</code></pre><p>In the preceding example, replace <code>&lt;project_name&gt;</code> with
+the namespace of the project where you installed the Operator. If
+your operator was installed to all namespaces, replace
+<code>&lt;project_name&gt;</code> with <code>openshift-operators</code>.</p>
+</li>
+<li>
+<p>Delete the CSV for the Operator in the target namespace:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">$ oc delete clusterserviceversion &lt;currentCSV&gt; -n &lt;project_name&gt;
+</code></pre><p>In the preceding example, replace <code>&lt;currentCSV&gt;</code> with the
+<code>currentCSV</code> value that you obtained in <a href="#step1" title="Procedure">Step
+1</a> (for example,
+<code>jws-operator.v2.0.x</code>). Replace <code>&lt;project_name&gt;</code>
+with the namespace of the project where you installed the Operator.
+If your operator was installed to all namespaces, replace
+<code>&lt;project_name&gt;</code> with <code>openshift-operators</code>.</p>
+<p>The preceding command displays a message to confirm that the CSV is
+deleted.</p>
+<p>For example:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">clusterserviceversion.operators.coreos.com &#34;jws-operator.v2.0.x&#34; deleted
+</code></pre></li>
+</ol>
+<h1 id="chapter6creating-a-secret-for-a-generic-or-github-webhook">Chapter 6. Creating a secret for a generic or GitHub webhook</h1>
+<p>You can create a secret that you can use with a generic or GitHub
+webhook to trigger application builds in a Git repository. Depending on
+the type of Git hosting platform that you use for your application code,
+the JWS Operator provides a <code>genericWebhookSecret</code>parameter
+and a <code>githubWebhookSecret</code> parameter that you can use to
+specify the secret in the custom resource file for a web application.</p>
+<p><strong>Procedure</strong></p>
+<ol>
+<li>
+<p>Create an encoded secret string:</p>
+<p>a.  Create a file named, for example, <code>secret.txt</code>.</p>
+<p>b.  In the <code>secret.txt</code> file, enter the secret string in
+plain text.</p>
+<p>For example:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">qwerty
+</code></pre><p>c.  To encode the string, enter the following command:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">base64 secret.txt
+</code></pre><p>The preceding command displays the encoded string.</p>
+<p>For example:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">cXdlcnR5Cg==
+</code></pre></li>
+<li>
+<p>Create a <code>secret.yaml</code> file that defines an object of kind <code>Secret</code>.</p>
+<p>For example:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">kind: Secret
+apiVersion: v1
+metadata:
+  name: jws-secret
+data:
+  WebHookSecretKey: cXdlcnR5Cg==
+</code></pre><p>In the preceding example, <code>jws-secret</code> is the name of the
+secret and <code>cXdlcnR5Cg==</code> is the encoded secret string.</p>
+</li>
+<li>
+<p>To create the secret, enter the following command:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">oc create -f secret.yaml
+</code></pre><p>The preceding command displays a message to confirm that the secret
+is created.</p>
+<p>For example:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">secret/jws-secret created
+</code></pre></li>
+</ol>
+<p><strong>Verification</strong></p>
+<ol>
+<li>
+<p>Get the URL for the webhook:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">oc describe BuildConfig | grep webhooks
+</code></pre><p>The preceding command generates the webhook URL in the following
+format:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">https://&lt;host&gt;:&lt;port&gt;/apis/build.openshift.io/v1/namespaces/&lt;namespace&gt;/buildconfigs/&lt;name&gt;/webhooks/&lt;secret&gt;/generic
+</code></pre></li>
+<li>
+<p>Create a minimal JSON file named, for example,
+<code>payload.json</code>:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">{}
+</code></pre></li>
+<li>
+<p>To send a request to the webhook, enter the following
+<code>curl</code> command:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">curl -H &#34;X-GitHub-Event: push&#34; -H &#34;Content-Type: application/json&#34; -k -X POST --data-binary @payload.json https://&lt;host&gt;:&lt;port&gt;/apis/build.openshift.io/v1/namespaces/&lt;namespace&gt;/buildconfigs/&lt;name&gt;/webhooks/&lt;secret&gt;/generic
+</code></pre><p>In the preceding example, <code>payload.json</code> is the name of
+the minimal JSON file you have created.</p>
+<p>Replace <code>&lt;host&gt;</code>, <code>&lt;port&gt;</code>, <code>&lt;namespace&gt;</code>, and <code>&lt;name&gt;</code> in the URL string with values that are appropriate for your environment. Replace <code>&lt;secret&gt;</code> with the name of the secret you have created for the webhook.</p>
+<p>The preceding command generates the following type of webhook
+response in JSON format:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">{&#34;kind&#34;:&#34;Build&#34;,&#34;apiVersion&#34;:&#34;build.openshift.io/v1&#34;,&#34;metadata&#34;:{&#34;name&#34;:&#34;test-2&#34;,&#34;namespace&#34;:&#34;jfc&#34;,&#34;selfLink&#34;:&#34;/apis/build.openshift.io/v1/namespaces/jfc/buildconfigs/test-2/instantiate&#34;,&#34;uid&#34;:&#34;a72dd529-edc6-4e1c-898e-7c0dbbea176e&#34;,&#34;resourceVersion&#34;:&#34;846159&#34;,&#34;creationTimestamp&#34;:&#34;2020-10-30T12:29:30Z&#34;,&#34;labels&#34;:{&#34;application&#34;:&#34;test&#34;,&#34;buildconfig&#34;:&#34;test&#34;,&#34;openshift.io/build-config.name&#34;:&#34;test&#34;,&#34;openshift.io/build.start-policy&#34;:&#34;Serial&#34;},&#34;annotations&#34;:{&#34;openshift.io/build-config.name&#34;:&#34;test&#34;,&#34;openshift.io/build.number&#34;:&#34;2&#34;},&#34;ownerReferences&#34;:[{&#34;apiVersion&#34;:&#34;build.openshift.io/v1&#34;,&#34;kind&#34;:&#34;BuildConfig&#34;,&#34;name&#34;:&#34;test&#34;,&#34;uid&#34;:&#34;1f78fa3f-2f3b-421b-9f49-192184cc2280&#34;,&#34;controller&#34;:true}],&#34;managedFields&#34;:[{&#34;manager&#34;:&#34;openshift-apiserver&#34;,&#34;operation&#34;:&#34;Update&#34;,&#34;apiVersion&#34;:&#34;build.openshift.io/v1&#34;,&#34;time&#34;:&#34;2020-10-30T12:29:30Z&#34;,&#34;fieldsType&#34;:&#34;FieldsV1&#34;,&#34;fieldsV1&#34;:{&#34;f:metadata&#34;:{&#34;f:annotations&#34;:{&#34;.&#34;:{},&#34;f:openshift.io/build-config.name&#34;:{},&#34;f:openshift.io/build.number&#34;:{}},&#34;f:labels&#34;:{&#34;.&#34;:{},&#34;f:application&#34;:{},&#34;f:buildconfig&#34;:{},&#34;f:openshift.io/build-config.name&#34;:{},&#34;f:openshift.io/build.start-policy&#34;:{}},&#34;f:ownerReferences&#34;:{&#34;.&#34;:{},&#34;k:{\&#34;uid\&#34;:\&#34;1f78fa3f-2f3b-421b-9f49-192184cc2280\&#34;}&#34;:{&#34;.&#34;:{},&#34;f:apiVersion&#34;:{},&#34;f:controller&#34;:{},&#34;f:kind&#34;:{},&#34;f:name&#34;:{},&#34;f:uid&#34;:{}}}},&#34;f:spec&#34;:{&#34;f:output&#34;:{&#34;f:to&#34;:{&#34;.&#34;:{},&#34;f:kind&#34;:{},&#34;f:name&#34;:{}}},&#34;f:serviceAccount&#34;:{},&#34;f:source&#34;:{&#34;f:contextDir&#34;:{},&#34;f:git&#34;:{&#34;.&#34;:{},&#34;f:ref&#34;:{},&#34;f:uri&#34;:{}},&#34;f:type&#34;:{}},&#34;f:strategy&#34;:{&#34;f:sourceStrategy&#34;:{&#34;.&#34;:{},&#34;f:env&#34;:{},&#34;f:forcePull&#34;:{},&#34;f:from&#34;:{&#34;.&#34;:{},&#34;f:kind&#34;:{},&#34;f:name&#34;:{}},&#34;f:pullSecret&#34;:{&#34;.&#34;:{},&#34;f:name&#34;:{}}},&#34;f:type&#34;:{}},&#34;f:triggeredBy&#34;:{}},&#34;f:status&#34;:{&#34;f:conditions&#34;:{&#34;.&#34;:{},&#34;k:{\&#34;type\&#34;:\&#34;New\&#34;}&#34;:{&#34;.&#34;:{},&#34;f:lastTransitionTime&#34;:{},&#34;f:lastUpdateTime&#34;:{},&#34;f:status&#34;:{},&#34;f:type&#34;:{}}},&#34;f:config&#34;:{&#34;.&#34;:{},&#34;f:kind&#34;:{},&#34;f:name&#34;:{},&#34;f:namespace&#34;:{}},&#34;f:phase&#34;:{}}}}]},&#34;spec&#34;:{&#34;serviceAccount&#34;:&#34;builder&#34;,&#34;source&#34;:{&#34;type&#34;:&#34;Git&#34;,&#34;git&#34;:{&#34;uri&#34;:&#34;https://github.com/jfclere/demo-webapp.git&#34;,&#34;ref&#34;:&#34;master&#34;},&#34;contextDir&#34;:&#34;/&#34;},&#34;strategy&#34;:{&#34;type&#34;:&#34;Source&#34;,&#34;sourceStrategy&#34;:{&#34;from&#34;:{&#34;kind&#34;:&#34;DockerImage&#34;,&#34;name&#34;:&#34;image-registry.openshift-image-registry.svc:5000/jfc/jboss-webserver54-tomcat9-openshift@sha256:75dcdf81011e113b8c8d0a40af32dc705851243baa13b68352706154174319e7&#34;},&#34;pullSecret&#34;:{&#34;name&#34;:&#34;builder-dockercfg-rvbh8&#34;},&#34;env&#34;:[{&#34;name&#34;:&#34;MAVEN_MIRROR_URL&#34;},{&#34;name&#34;:&#34;ARTIFACT_DIR&#34;}],&#34;forcePull&#34;:true}},&#34;output&#34;:{&#34;to&#34;:{&#34;kind&#34;:&#34;ImageStreamTag&#34;,&#34;name&#34;:&#34;test:latest&#34;}},&#34;resources&#34;:{},&#34;postCommit&#34;:{},&#34;nodeSelector&#34;:null,&#34;triggeredBy&#34;:[{&#34;message&#34;:&#34;Generic WebHook&#34;,&#34;genericWebHook&#34;:{&#34;secret&#34;:&#34;\u003csecret\u003e&#34;}}]},&#34;status&#34;:{&#34;phase&#34;:&#34;New&#34;,&#34;config&#34;:{&#34;kind&#34;:&#34;BuildConfig&#34;,&#34;namespace&#34;:&#34;jfc&#34;,&#34;name&#34;:&#34;test&#34;},&#34;output&#34;:{},&#34;conditions&#34;:[{&#34;type&#34;:&#34;New&#34;,&#34;status&#34;:&#34;True&#34;,&#34;lastUpdateTime&#34;:&#34;2020-10-30T12:29:30Z&#34;,&#34;lastTransitionTime&#34;:&#34;2020-10-30T12:29:30Z&#34;}]}}
+{
+  &#34;kind&#34;: &#34;Status&#34;,
+  &#34;apiVersion&#34;: &#34;v1&#34;,
+  &#34;metadata&#34;: {
+
+  },
+  &#34;status&#34;: &#34;Success&#34;,
+  &#34;message&#34;: &#34;no git information found in payload, ignoring and continuing with build&#34;,
+  &#34;code&#34;: 200
+}
+</code></pre></li>
+</ol>
+<p><strong>Additional resources</strong></p>
+<ul>
+<li><a href="https://docs.openshift.com/container-platform/4.9/cicd/builds/triggering-builds-build-hooks.html#builds-webhook-triggers_triggering-builds-build-hooks">Webhook
+Triggers</a></li>
+<li><a href="#crd_parameters" title="Chapter 7. JWS Operator CRD parameters">JWS Operator CRD parameters</a></li>
+</ul>
+<h1 id="chapter7jws-operator-crd-parameters">Chapter 7. JWS Operator CRD parameters</h1>
+<p>The JWS Operator provides a set of custom resource definition (CRD)
+parameters. When you create a custom resource <code>WebServer</code> file
+for a web application, you can specify parameter values in a
+<code>&lt;key&gt;: &lt;value&gt;</code> format. The JWS Operator uses the information
+that you specify in the custom resource <code>WebServer</code> file to
+deploy the web application.</p>
+<h2 id="71crd-parameter-hierarchy">7.1. CRD parameter hierarchy</h2>
+<p>The JWS Operator provides CRD parameters in the following hierarchical
+format:</p>
+<pre tabindex="0"><code class="language-screen" data-lang="screen">applicationName: &lt;value&gt;
+replicas: &lt;value&gt;
+useSessionClustering: &lt;value&gt;
+webImage:
+   applicationImage: &lt;value&gt;
+   imagePullSecret: &lt;value&gt;
+   webApp:
+      name: &lt;value&gt;
+      sourceRepositoryURL: &lt;value&gt;
+      sourceRepositoryRef: &lt;value&gt;
+      contextDir: &lt;value&gt;
+      webAppWarImage: &lt;value&gt;
+      webAppWarImagePushSecret: &lt;value&gt;
+      builder:
+        image: &lt;value&gt;
+        imagePullSecret: &lt;value&gt;
+        applicationBuildScript: &lt;value&gt;
+   webServerHealthCheck:
+      serverReadinessScript: &lt;value&gt;
+      serverLivenessScript: &lt;value&gt;
+webImageStream:
+   imageStreamName: &lt;value&gt;
+   imageStreamNamespace: &lt;value&gt;
+   webSources:
+      sourceRepositoryUrl: &lt;value&gt;
+      sourceRepositoryRef: &lt;value&gt;
+      contextDir: &lt;value&gt;
+      webSourcesParams:
+         mavenMirrorUrl: &lt;value&gt;
+         artifactDir: &lt;value&gt;
+         genericWebHookSecret: &lt;value&gt;
+         githubWebHookSecret: &lt;value&gt;
+   webServerHealthCheck:
+      serverReadinessScript: &lt;value&gt;
+      serverLivenessScript: &lt;value&gt;
+</code></pre><p><strong>Note:</strong>
+When you create a custom resource <code>WebServer</code> file, specify parameter names and values in the same hierarchical format that the preceding example outlines. For more information about creating a custom resource <code>WebServer</code> file, see <a href="#deploy_existing_image" title="Chapter 4. Deploying an existing JWS image">Deploying an existing JWS image</a>.</p>
+<h2 id="72crd-parameter-details">7.2. CRD parameter details</h2>
+<p>The following table describes the CRD parameters that the JWS Operator
+provides. This table shows each parameter name in the context of any
+higher-level parameters that are above it in the hierarchy.</p>
+<p>Description</p>
+<p><code>replicas</code></p>
+<p>The number of pods of the JBoss Web Server image that you want to run</p>
+<p>For example:<br>
+<code>replicas: 2</code></p>
+<p><code>applicationName</code></p>
+<p>The name of the web application that you want the JWS Operator to deploy</p>
+<p>The application name must be a unique value in the OpenShift namespace
+or project. The JWS Operator uses the application name that you specify
+to create the route to access the web application.</p>
+<p>For example:<br>
+<code>applicationName: my-app</code></p>
+<p><code>useSessionClustering</code></p>
+<p>Enables DNSping session clustering</p>
+<p>This is set to <code>false</code>by default. If you set this parameter to <code>true</code>, the image must be based on JBoss Web Server images, because session clustering uses the <code>ENV_FILES</code> environment variable and a shell script to add the clustering in the <code>server.xml</code> file.</p>
+<p><strong>Note:</strong>
+In this release, the session clustering functionality is available as a
+Technology Preview feature only. The current Operator version uses the
+<code>DNS Membership Provider</code>, which is limited because of DNS
+limitations. <code>InetAddress.getAllByName()</code> results are cached,
+which means session replications might not work while scaling up.</p>
+<p>For example:<br>
+<code>useSessionClustering: true</code></p>
+<p><code>webImage</code></p>
+<p>A set of parameters that controls how the JWS Operator deploys pods from
+existing images</p>
+<p>This parameter contains <code>applicationImage</code>, <code>imagePullSecret</code>, <code>webApp</code>, and<code>webServerHealthCheck</code> fields.</p>
+<p><code>webImage:</code><br>
+      <code>applicationImage</code></p>
+<p>The full path to the name of the application image that you want to
+deploy</p>
+<p>For example:<br>
+<code>applicationImage: quay.io/$user/my-image-name</code></p>
+<p><code>webImage:</code><br>
+      <code>imagePullSecret</code></p>
+<p>The name of the secret that the JWS Operator uses to pull images from
+the repository</p>
+<p>The secret must contain the key <code>.dockerconfigjson</code>. The JWS
+Operator mounts the secret and uses it similar to
+<code>--authfile /mount_point/.dockerconfigjson</code> to pull the images
+from the repository.</p>
+<p>The <code>Secret</code> object definition file might contain several
+username and password values or tokens to allow access to images in the
+image stream, the builder image, and images built by the JWS Operator.</p>
+<p>For example:<br>
+<code>imagePullSecret: mysecret</code></p>
+<p><code>webImage:</code><br>
+      <code>webApp</code></p>
+<p>A set of parameters that describe how the JWS Operator builds the web
+application that you want to add to the application image</p>
+<p>If you do not specify the <code>webApp</code> parameter, the JWS Operator
+deploys the web application without building the application.</p>
+<p>This parameter contains <code>name</code>, <code>sourceRepositoryURL</code>, <code>sourceRepositoryRef</code>, <code>contextDir</code>, <code>webAppWarImage</code>, <code>webAppWarImagePushSecret</code>, and <code>builder</code> fields.</p>
+<p><code>webImage:\       </code>webApp:<code>\            </code>name`</p>
+<p>The name of the web application file</p>
+<p>The default name is <code>ROOT.war</code>.</p>
+<p>For example:<br>
+<code>name: my-app.war</code></p>
+<p><code>webImage:</code><br>
+      <code>webApp:</code><br>
+           <code>sourceRepositoryURL</code></p>
+<p>The URL where the application source files are located</p>
+<p>The source should contain a Maven <code>pom.xml</code> file to support a Maven build. When Maven generates a <code>.war</code> file for the application, the <code>.war</code> file is copied to the <code>webapps</code> directory of the image that the JWS Operator uses to deploy the application (for example, <code>/opt/jws-5.x/tomcat/webapps</code>).</p>
+<p>For example:<br>
+<code>sourceRepositoryUrl: 'https://github.com/$user/demo-webapp.git'</code></p>
+<p><code>webImage:</code><br>
+      <code>webApp:</code><br>
+           <code>sourceRepositoryRef</code></p>
+<p>The branch of the source repository that the JWS Operator uses</p>
+<p>For example:<br>
+<code>sourceRepositoryRef: main</code></p>
+<p><code>webImage:</code><br>
+      <code>webApp:</code><br>
+           <code>contextDir</code></p>
+<p>The subdirectory in the source repository where the <code>pom.xml</code>
+file is located and the <code>mvn install</code> command is run</p>
+<p>For example:<br>
+<code>contextDir: /</code></p>
+<p><code>webImage:</code><br>
+      <code>webApp:</code><br>
+           <code>webAppWarImage</code></p>
+<p>The URL of the images where the JWS Operator pushes the built image</p>
+<p><code>webImage:</code><br>
+      <code>webApp:</code><br>
+           <code>webAppWarImagePushSecret</code></p>
+<p>The name of the secret that the JWS Operator uses to push images to the
+repository</p>
+<p>The secret must contain the key <code>.dockerconfigjson</code>. The JWS Operator mounts the secret and uses it similar to <code>--authfile /mount_point/.dockerconfigjson</code> to push the image to the repository.</p>
+<p>If the JWS Operator uses a pull secret to pull images from the
+repository, you must specify the name of the pull secret as the value
+for the <code>webAppWarImagePushSecret</code> parameter. See
+<a href="#pullsecret">imagePullSecret</a> for more information.</p>
+<p>For example:<br>
+<code>imagePullSecret: mysecret</code></p>
+<p><code>webImage:</code><br>
+      <code>webApp:</code><br>
+           <code>builder</code></p>
+<p>A set of parameters that describe how the JWS Operator builds the web
+application and creates and pushes the image to the image repository</p>
+<p><strong>Note:</strong>
+To ensure that the builder can operate successfully and run commands
+with different user IDs, the builder must have access to the
+<code>anyuid</code> SCC (security context constraint). To grant the
+builder access to the <code>anyuid</code> SCC, enter the following
+command:</p>
+<p><code>oc adm policy add-scc-to-user anyuid -z builder</code></p>
+<p>This parameter contains <code>image</code>, <code>imagePullSecret</code>,
+and <code>applicationBuildScript</code> fields.</p>
+<p><code>webImage:</code><br>
+      <code>webApp:</code><br>
+           <code>builder:</code><br>
+                <code>image</code></p>
+<p>The image of the container where the JWS Operator builds the web
+application</p>
+<p>For example:<br>
+<code>image: quay.io/$user/tomcat10-buildah</code></p>
+<p><code>webImage:</code><br>
+      <code>webApp:</code><br>
+           <code>builder:</code><br>
+                <code>imagePullSecret</code></p>
+<p>The name of the secret (if specified) that the JWS Operator uses to pull
+the builder image from the repository</p>
+<p>The secret must contain the key <code>.dockerconfigjson</code>. The JWS Operator mounts the secret and uses it similar to <code>--authfile /mount_point/.dockerconfigjson</code> to pull the images from the repository.</p>
+<p>The <code>Secret</code> object definition file might contain several username and password values or tokens to allow access to images in the image stream, the builder image, and images built by the JWS Operator.</p>
+<p>For example:<br>
+<code>imagePullSecret: mysecret</code></p>
+<p><code>webImage:</code><br>
+      <code>webApp:</code><br>
+           <code>builder:</code><br>
+                <code>applicationBuildScript</code></p>
+<p>The script that the builder image uses to build the application
+<code>.war</code> file and move it to the <code>/mnt</code> directory</p>
+<p>If you do not specify a value for this parameter, the builder image uses
+a default script that uses Maven and Buildah.</p>
+<p><code>webImage:</code><br>
+      <code>webServerHealthCheck</code></p>
+<p>The health check that the JWS Operator uses</p>
+<p>The default behavior is to use the health valve, which does not require
+any parameters.</p>
+<p>This parameter contains <code>serverReadinessScript</code> and
+<code>serverLivenessScript</code> fields.</p>
+<p><code>webImage:</code><br>
+      <code>webServerHealthCheck:</code><br>
+           <code>serverReadinessScript</code></p>
+<p>A string that specifies the logic for the pod readiness health check</p>
+<p>If this parameter is not specified, the JWS Operator uses the default
+health check by using the OpenShift internal registry to check
+<code>http://localhost:8080/health</code>.</p>
+<p>For example:<br>
+<code>serverReadinessScript: /bin/bash -c &quot; /usr/bin/curl --noproxy '*' -s 'http://localhost:8080/health' | /usr/bin/grep -i 'status.*UP'&quot;</code></p>
+<p><code>webImage:</code><br>
+      <code>webServerHealthCheck:</code><br>
+           <code>serverLivenessScript</code></p>
+<p>A string that specifies the logic for the pod liveness health check</p>
+<p>This parameter is optional.</p>
+<p><code>webImageStream</code></p>
+<p>A set of parameters that control how the JWS Operator uses an image
+stream that provides images to run or to build upon</p>
+<p>The JWS Operator uses the latest image in the image stream.</p>
+<p>This parameter contains <code>applicationImage</code>, <code>imagePullSecret</code>, <code>webApp</code>, and <code>webServerHealthCheck</code> fields.</p>
+<p><code>webImageStream:</code><br>
+      <code>imageStreamName</code></p>
+<p>The name of the image stream that you have created to allow the JWS
+Operator to find the base images</p>
+<p>For example:<br>
+<code>imageStreamName: my-image-name-imagestream:latest</code></p>
+<p><code>webImageStream:</code><br>
+      <code>imageStreamNamespace</code></p>
+<p>The namespace or project where you have created the image stream</p>
+<p>For example:<br>
+<code>imageStreamNamespace: my-namespace</code></p>
+<p><code>webImageStream:</code><br>
+      <code>webSources</code></p>
+<p>A set of parameters that describe where the application source files are
+located and how to build them</p>
+<p>If you do not specify the <code>webSources</code> parameter, the JWS
+Operator deploys the latest image in the image stream.</p>
+<p>This parameter contains <code>sourceRepositoryUrl</code>, <code>sourceRepositoryRef</code>, <code>contextDir</code>, and <code>webSourcesParams</code> fields.</p>
+<p><code>webImageStream:</code><br>
+      <code>webSources:</code><br>
+           <code>sourceRepositoryUrl</code></p>
+<p>The URL where the application source files are located</p>
+<p>The source should contain a Maven <code>pom.xml</code> file to support a Maven build. When Maven generates a <code>.war</code> file for the application, the <code>.war</code> file is copied to the <code>webapps</code> directory of the image that the JWS Operator uses to deploy the application (for example, <code>/opt/jws-5.x/tomcat/webapps</code>).</p>
+<p>For example:<br>
+<code>sourceRepositoryUrl: 'https://github.com/$user/demo-webapp.git'</code></p>
+<p><code>webImageStream:</code><br>
+      <code>webSources:</code><br>
+           <code>sourceRepositoryRef</code></p>
+<p>The branch of the source repository that the JWS Operator uses</p>
+<p>For example:<br>
+<code>sourceRepositoryRef: main</code></p>
+<p><code>webImageStream:</code><br>
+      <code>webSources:</code><br>
+           <code>contextDir</code></p>
+<p>The subdirectory in the source repository where the <code>pom.xml</code>
+file is located and the <code>mvn install</code> command is run</p>
+<p>For example:<br>
+<code>contextDir: /</code></p>
+<p><code>webImageStream:</code><br>
+      <code>webSources:</code><br>
+           <code>webSourcesParams</code></p>
+<p>A set of parameters that describe how to build the application images</p>
+<p>This parameter is optional.</p>
+<p>This parameter contains <code>mavenMirrorUrl</code>, <code>artifactDir</code>, <code>genericWebHookSecret</code>, and <code>githubWebHookSecret</code> fields.</p>
+<p><code>webImageStream:</code><br>
+      <code>webSources:</code><br>
+           <code>webSourcesParams:</code><br>
+                <code>mavenMirrorUrl</code></p>
+<p>The Maven proxy URL that Maven uses to build the web application</p>
+<p>This parameter is required if the cluster does not have internet access.</p>
+<p><code>webImageStream:</code><br>
+      <code>webSources:</code><br>
+           <code>webSourcesParams:</code><br>
+                <code>artifactDir</code></p>
+<p>The directory where Maven stores the <code>.war</code> file that Maven
+generates for the web application</p>
+<p>The contents of this directory are copied to the <code>webapps</code>
+directory of the image that the JWS Operator uses to deploy the
+application (for example, <code>/opt/jws-5.x/tomcat/webapps</code>).</p>
+<p>The default value is <code>target</code>.</p>
+<p><code>webImageStream:</code><br>
+      <code>webSources:</code><br>
+           <code>webSourcesParams:</code><br>
+                <code>genericWebHookSecret</code></p>
+<p>The name of a secret for a generic webhook that can trigger a build</p>
+<p>For more information about creating a secret, see <a href="#create_webhook_secret" title="Chapter 6. Creating a secret for a generic or GitHub webhook">Creating a secret for a generic or GitHub webhook</a>.</p>
+<p>For more information about using generic webhooks, see <a href="https://docs.openshift.com/container-platform/4.9/cicd/builds/triggering-builds-build-hooks.html#builds-webhook-triggers_triggering-builds-build-hooks">Webhook Triggers</a>.</p>
+<p>For example:<br>
+<code>genericWebHookSecret: my-secret</code></p>
+<p><code>webImageStream:</code><br>
+      <code>webSources:</code><br>
+           <code>webSourcesParams:</code><br>
+                <code>githubWebHookSecret</code></p>
+<p>The name of a secret for a GitHub webhook that can trigger a build</p>
+<p>For more information about creating a secret, see <a href="#create_webhook_secret" title="Chapter 6. Creating a secret for a generic or GitHub webhook">Creating a secret for a generic or GitHub webhook</a>.</p>
+<p>For more information about using GitHub webhooks, see <a href="https://docs.openshift.com/container-platform/4.9/cicd/builds/triggering-builds-build-hooks.html#builds-webhook-triggers_triggering-builds-build-hooks">Webhook
+Triggers</a>.</p>
+<p><strong>Note:</strong>
+You cannot perform manual tests of a GitHub webhook. GitHub generates
+the payload and it is not empty.</p>
+<p><code>webImageStream:</code><br>
+      <code>webServerHealthCheck</code></p>
+<p>The health check that the JWS Operator uses</p>
+<p>The default behavior is to use the health valve, which does not require
+any parameters.</p>
+<p>This parameter contains <code>serverReadinessScript</code> and
+<code>serverLivenessScript</code> fields.</p>
+<p><code>webImageStream:</code><br>
+      <code>webServerHealthCheck:</code><br>
+           <code>serverReadinessScript</code></p>
+<p>A string that specifies the logic for the pod readiness health check</p>
+<p>If this parameter is not specified, the JWS Operator uses the default health check by using the OpenShift internal registry to check <code>http://localhost:8080/health</code>.</p>
+<p>For example:<br>
+<code>serverReadinessScript: /bin/bash -c &quot; /usr/bin/curl --noproxy '*' -s 'http://localhost:8080/health' | /usr/bin/grep -i 'status.*UP'&quot;</code></p>
+<p><code>webImageStream:</code><br>
+      <code>webServerHealthCheck:</code><br>
+           <code>serverLivenessScript</code></p>
+<p>A string that specifies the logic for the pod liveness health check</p>
+<p>This parameter is optional.</p>
+
+  
+
+
+  </main>
+  <footer>
+    <p>Copyright 2024. All rights reserved.</p>
+
+  </footer>
+</body>
+</html>

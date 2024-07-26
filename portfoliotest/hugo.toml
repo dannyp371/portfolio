@@ -1,0 +1,4 @@
+baseURL = 'https:danielphilips.name/'
+languageCode = 'en-us'
+title = 'Hugo Portfolio'
+theme = 'typo'
