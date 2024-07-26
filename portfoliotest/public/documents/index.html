@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en-us" dir="ltr">
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script>
+  <meta charset="utf-8">
+<meta name="viewport" content="width=device-width">
+<title>Documents | Hugo Portfolio Test</title>
+
+    <link rel="stylesheet" href="/css/main.css">
+
+
+      <script src="/js/main.js"></script>
+
+
+</head>
+<body>
+  <header>
+    <h1>Hugo Portfolio Test</h1>
+
+  <nav>
+    <ul>
+    <li>
+      <a href="/">Home</a>
+    </li>
+    <li>
+      <a href="/documents/">Documents</a>
+    </li>
+    </ul>
+  </nav>
+
+
+  </header>
+  <main>
+    
+  <h1>Documents</h1>
+  <p>I&rsquo;ve included 3 different documents on this site. One is a long form guide for running JBoss Web Server in OpenShift. One is a quick reference for using the oData API. The last document is a short guide for setting up a Rallly site with ReadySet.</p>
+
+  
+    <h2><a href="/documents/jws-operator/">Chapter 1. Red Hat JBoss Web Server Operator</a></h2>
+    An Operator is a Kubernetes-native application that makes it easy to manage complex stateful applications in Kubernetes and OpenShift environments. Red Hat JBoss Web Server (JWS) provides an Operator to manage JWS for OpenShift images. You can use the JWS Operator to create, configure, manage, and seamlessly upgrade instances of web server applications in OpenShift.
+Operators include the following key concepts:
+The Operator Framework is a toolkit to manage Operators in an effective, automated, and scalable way.
+  
+    <h2><a href="/documents/odata/">OData Quick Reference Guide</a></h2>
+    The OData protocol is a data access protocol built on core protocols like HTTP and commonly accepted methodologies like REST for the web. It allows you to query databases over the web and supports several formats. This guide will cover the basics of OData&rsquo;s URL querying convention; however, full documentation for OData can be found here.
+URL String Query OData uses URL strings to query your database. Each query has 3 major parts, the service root URL1, resource path2, and query options3.
+  
+    <h2><a href="/documents/rsr/">ReadySet Rallly</a></h2>
+    This guide will instruct you on setting up a self-hosted Rallly site with ReadySet enabled for faster database queries.
+Prerequisites ReadySet local build: See instuctions here Self-hosted Rallly site Procedure Connect your database to your Rallly application by editing your config.env file. Uncomment DATABASE_URL and set its value to the connection string of ReadySet: DATABASE_URL=&lt;your ReadySet connection string&gt;
+Connect to your database psql in this case: $ psql -h &lt;hostname&gt; -p &lt;port&gt; -d &lt;database type&gt; -U &lt;username&gt;
+  
+
+  </main>
+  <footer>
+    <p>Copyright 2024. All rights reserved.</p>
+
+  </footer>
+</body>
+</html>

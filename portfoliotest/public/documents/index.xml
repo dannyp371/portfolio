@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Documents on Hugo Portfolio Test</title>
+    <link>http://localhost:1313/documents/</link>
+    <description>Recent content in Documents on Hugo Portfolio Test</description>
+    <generator>Hugo</generator>
+    <language>en-us</language>
+    <lastBuildDate>Thu, 25 Jul 2024 00:00:00 +0000</lastBuildDate>
+    <atom:link href="http://localhost:1313/documents/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Chapter 1. Red Hat JBoss Web Server Operator</title>
+      <link>http://localhost:1313/documents/jws-operator/</link>
+      <pubDate>Thu, 25 Jul 2024 00:00:00 +0000</pubDate>
+      <guid>http://localhost:1313/documents/jws-operator/</guid>
+      <description>An Operator is a Kubernetes-native application that makes it easy to manage complex stateful applications in Kubernetes and OpenShift environments. Red Hat JBoss Web Server (JWS) provides an Operator to manage JWS for OpenShift images. You can use the JWS Operator to create, configure, manage, and seamlessly upgrade instances of web server applications in OpenShift.&#xA;Operators include the following key concepts:&#xA;The Operator Framework is a toolkit to manage Operators in an effective, automated, and scalable way.</description>
+    </item>
+    <item>
+      <title>OData Quick Reference Guide</title>
+      <link>http://localhost:1313/documents/odata/</link>
+      <pubDate>Thu, 25 Jul 2024 00:00:00 +0000</pubDate>
+      <guid>http://localhost:1313/documents/odata/</guid>
+      <description>The OData protocol is a data access protocol built on core protocols like HTTP and commonly accepted methodologies like REST for the web. It allows you to query databases over the web and supports several formats. This guide will cover the basics of OData&amp;rsquo;s URL querying convention; however, full documentation for OData can be found here.&#xA;URL String Query OData uses URL strings to query your database. Each query has 3 major parts, the service root URL1, resource path2, and query options3.</description>
+    </item>
+    <item>
+      <title>ReadySet Rallly</title>
+      <link>http://localhost:1313/documents/rsr/</link>
+      <pubDate>Thu, 25 Jul 2024 00:00:00 +0000</pubDate>
+      <guid>http://localhost:1313/documents/rsr/</guid>
+      <description>This guide will instruct you on setting up a self-hosted Rallly site with ReadySet enabled for faster database queries.&#xA;Prerequisites ReadySet local build: See instuctions here Self-hosted Rallly site Procedure Connect your database to your Rallly application by editing your config.env file. Uncomment DATABASE_URL and set its value to the connection string of ReadySet: DATABASE_URL=&amp;lt;your ReadySet connection string&amp;gt;&#xA;Connect to your database psql in this case: $ psql -h &amp;lt;hostname&amp;gt; -p &amp;lt;port&amp;gt; -d &amp;lt;database type&amp;gt; -U &amp;lt;username&amp;gt;</description>
+    </item>
+  </channel>
+</rss>

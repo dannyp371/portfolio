@@ -1,0 +1,18 @@
+baseURL = 'https://example.org/'
+languageCode = 'en-US'
+title = 'Hugo Portfolio Test'
+
+[[menus.main]]
+name = 'Home'
+pageRef = '/'
+weight = 10
+
+[[menus.main]]
+name = 'Documents'
+pageRef = '/documents'
+weight = 20
+
+[module]
+  [module.hugoVersion]
+    extended = false
+    min = "0.116.0"
